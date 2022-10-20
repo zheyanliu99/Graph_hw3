@@ -1,0 +1,128 @@
+---
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(MASS)
+library(dagitty)
+library(lavaan)
+library(graph)
+library(gRbase)
+library(gRim)
+```
+
+# Problem 3
+
+```{r}
+set.seed(123)
+( K <- cbind(c(10,7,7,0),c(7,20,0,7),c(7,0,30,7),c(0,7,7,40)) )
+data <- as.data.frame(mvrnorm(n=10000,mu=c(0,0,0,0),Sigma=solve(K)))
+
+colnames(data) <- c("X1","X2","X3","X4")
+```
+
+## Conditional independency
+\newcommand{\indep}{\perp \!\!\! \perp}
+
+It represents following independencies: 
+
+$X_1 \indep X_4 | X_2, X_3$ and $X_2 \indep X_3 | X_1, X_4$
+
+The corresponding graph
+
+![fig 3-1](static/dag3-1){width=45%}
+
+Fit with OLS
+```{r}
+lmodel = lm(X1 ~ X4 + X2 + X3, data=data)
+summary(lmodel)
+```
+X4 is not significant while X2 and X3 are. This means X4 and X1 is independent given X2 and X3.
+
+
+```{r}
+lmodel = lm(X2 ~ X3 + X1 + X4, data=data)
+summary(lmodel)
+```
+X3 is not significant while X1 and X4 are. This means X2 and X3 is independent given X1 and X4.
+
+Fit with gRim
+
+cannot install package, **remember to do it later**
+
+```{r}
+glist <- list( 'X1', 'X2', 'X3', 'X4' )
+ddd <- cov.wt(data, method="ML")
+fit <- ggmfit(ddd$cov, ddd$n.obs, glist) # Estimate parameters using IPF
+fit$K
+```
+
+It did not work. K has more elements equal to zero than the original one.
+
+# Problem 4
+
+```{r}
+set.seed(123)
+( Sig <- cbind(c(3,-1.4,0,0),c(-1.4,3,1.4,1.4),c(0,1.4,3,0),c(0,1.4,0,3)) )
+data <- as.data.frame(mvrnorm(n=10000,mu=c(0,0,0,0),Sigma=Sig))
+colnames(data) <- c("X1","X2","X3","X4")
+```
+
+## a)
+
+Correlation represented by graph
+
+$X_1 \indep X_3$ $X_1 \indep X_4$ $X_2 \indep X_4$ and they are not independent given $X_2$
+
+Correlation Matrix
+
+```{r}
+solve(Sig)
+```
+
+## b) 
+
+The moralized graph looks like
+
+![fig 4-1](static/dag4-1){width=45%}\newline
+
+Every element of the precision matrix is not equal to 0 because every vertex is adjacent to another one.
+
+It does not imply the correlation suggested in (a)
+
+## c)
+
+```{r}
+glist <- list( 'X1', 'X2', 'X3', 'X4' )
+ddd <- cov.wt(data, method="ML")
+fit <- ggmfit(ddd$cov, ddd$n.obs, glist) # Estimate parameters using IPF
+solve(fit$K)
+```
+It is different from original covariance matrix as the elements on the diagonal are not the same.
+
+# Problem 5
+
+```{r}
+g <- dagitty( "dag{ x <- u1; u1 -> m <- u2 ; u2 -> y }" )
+df = simulateSEM(g, N = 1000, standardized = TRUE)
+plot(g)
+```
+
+```{r}
+reg = lm(y ~ x + m, data = df)
+summary(reg)
+```
+
+```{r}
+reg = lm(y ~ u2, data = df)
+summary(reg)
+```
+
+```{r}
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("graph")
+```
+
