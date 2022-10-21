@@ -112,17 +112,118 @@ plot(g)
 ```{r}
 reg = lm(y ~ x + m, data = df)
 summary(reg)
+confint(reg)
 ```
+The confidence interval of the effect (x) does not contain 0. This means the effect is negative.
+
+
+Sufficient adjustment sets
 
 ```{r}
-reg = lm(y ~ u2, data = df)
+adjustmentSets(g, exposure = 'x', outcome = 'y', type = 'all')
+```
+
+One of the sufficient set is { m, u1, u2 }. The confidence interval of the effect (x) contains 0.
+
+```{r}
+reg = lm(y ~ x + m + u1 + u2, data = df)
+summary(reg)
+confint(reg)
+```
+
+Another one of the sufficient set is { u2 }. The confidence interval of the effect (x) contains 0.
+
+```{r}
+reg = lm(y ~ x  + u2, data = df)
+summary(reg)
+confint(reg)
+```
+
+The conclusion is that if the features input is a sufficient adjustment set plus exposure, the effect will not be significant.
+
+# Problem 6
+
+
+## Construct the graph
+
+```{r}
+g <- dagitty( "dag{ 
+  D -> E -> A <- B <- G <- F -> H;
+  G -> H;
+  C -> H; C-> B; C->F; C-> E
+  E -> F
+}" )
+
+df = simulateSEM(g, N = 10000, standardized = TRUE)
+plot(g)
+```
+
+## Effects E on F
+
+Sufficient adjustment sets 
+
+```{r}
+adjustmentSets(g, exposure = 'E', outcome = 'F', type = 'all')
+```
+
+Adjustment sets { C }
+
+```{r}
+reg = lm(F ~ E + C, data = df)
 summary(reg)
 ```
 
-```{r}
-if (!require("BiocManager", quietly = TRUE))
-    install.packages("BiocManager")
+Adjustment sets { C, D }
 
-BiocManager::install("graph")
+```{r}
+reg = lm(F ~ E + C + D, data = df)
+summary(reg)
 ```
+
+All other variables
+
+```{r}
+reg = lm(F ~ ., data = df)
+summary(reg)
+```
+
+Variance of estimates All other variables < { C } < { C, D }
+
+## Effects B on A
+
+Sufficient adjustment sets 
+
+```{r}
+adjustmentSets(g, exposure = 'B', outcome = 'A', type = 'all')
+```
+
+
+
+Sufficient adjustment set { E }
+
+```{r}
+reg = lm(A ~ B + E, data = df)
+summary(reg)
+```
+
+
+Sufficient adjustment set { C, D, E, G, H }
+
+```{r}
+reg = lm(A ~ B + C + D + E + F + G , data = df)
+summary(reg)
+```
+
+All other variables
+
+```{r}
+reg = lm(A ~ ., data = df)
+summary(reg)
+```
+
+Variance of estimates All other variables >  { C, D, E, F, G } > {E}.
+
+
+Two results are on the contrary. The explanation is that B has only one path directly out to A while E has one to F and another one to A.
+
 
